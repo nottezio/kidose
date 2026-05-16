@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KIDOSE — Kalkulator Dosis Pediatri</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%23059669'/%3E%3Cpath d='M50 25v50M25 50h50' stroke='white' stroke-width='12' stroke-linecap='round'/%3E%3C/svg%3E">
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+  .accordion-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; }
+  .accordion-content.open { max-height: 5000px; transition: max-height 0.6s ease-in; }
+  .chevron { transition: transform 0.3s; }
+  .chevron.open { transform: rotate(180deg); }
+  .result-card { animation: fadeIn 0.3s ease-out; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+  input[type=number]::-webkit-inner-spin-button { opacity: 1; }
+  .pill { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 9999px; font-size: 0.7rem; font-weight: 600; }
+  .dose-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  .dose-table td:first-child { width: 58%; padding: 7px 8px 7px 12px; vertical-align: top; font-size: 0.82rem; color: #475569; line-height: 1.4; }
+  .dose-table td:last-child { width: 42%; padding: 7px 12px 7px 4px; text-align: right; vertical-align: top; font-family: ui-monospace,monospace; font-size: 0.82rem; font-weight: 600; color: #1e293b; white-space: normal; word-break: break-word; overflow-wrap: anywhere; }
+  .dose-table .highlight td:last-child { color: #047857; font-size: 0.875rem; }
+  .dose-table .sec-header td { background: #f1f5f9; padding: 5px 12px; font-size: 0.68rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.07em; }
+</style>
+</head>
+<body class="bg-slate-50 min-h-screen pb-12">
+
+<!-- HEADER -->
+<header class="bg-gradient-to-r from-emerald-700 to-teal-700 text-white shadow-lg sticky top-0 z-50">
+  <div class="max-w-5xl mx-auto px-4 py-4 flex items-center gap-3">
+    <div class="bg-white/15 backdrop-blur rounded-xl p-2">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2v20M2 12h20"/>
+      </svg>
+    </div>
+    <div class="flex-1">
+      <h1 class="text-xl font-bold tracking-tight">KIDOSE</h1>
+      <p class="text-xs text-emerald-100">Kalkulator Dosis Pediatri Praktis</p>
+    </div>
+    <span class="hidden sm:inline-block pill bg-white/20 text-white">v1.0</span>
+  </div>
+</header>
+
+<main class="max-w-5xl mx-auto px-4 mt-6">
+
+  <!-- INPUT CARD -->
+  <section class="bg-white rounded-2xl shadow-md border border-slate-200 p-5 sm:p-6 mb-5">
+    <h2 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4 flex items-center gap-2">
+      <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+      Data Pasien
+    </h2>
+
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <!-- Usia -->
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1.5">Usia</label>
+        <input id="age" type="number" min="0" step="1" placeholder="Contoh: 24"
+          class="w-full px-3 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none text-base">
+      </div>
+      <!-- Satuan Usia -->
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1.5">Satuan</label>
+        <select id="ageUnit" class="w-full px-3 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none text-base bg-white">
+          <option value="bulan">Bulan</option>
+          <option value="tahun" selected>Tahun</option>
+        </select>
+      </div>
+      <!-- BB -->
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1.5">Berat Badan (kg)</label>
+        <input id="weight" type="number" min="0" step="0.1" placeholder="Contoh: 12.5"
+          class="w-full px-3 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none text-base">
+      </div>
+    </div>
+
+    <!-- Warning area -->
+    <div id="warningArea" class="mt-3 hidden"></div>
+
+    <!-- Status bar -->
+    <div id="statusBar" class="mt-4 p-3 bg-slate-100 rounded-lg text-sm text-slate-600 text-center">
+      💡 Masukkan <b>BB</b> untuk memulai kalkulasi otomatis
+    </div>
+  </section>
+
+  <!-- CATEGORY ACCORDIONS -->
+  <div id="categories" class="space-y-3"></div>
+
+  <!-- DISCLAIMER -->
+  <footer class="mt-8 p-4 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900">
+    <b>⚠️ Disclaimer:</b> Kalkulator ini adalah alat bantu klinis. Selalu verifikasi dosis dengan formularium resmi (IDAI, BNF for Children) sebelum pemberian. Pertimbangkan kondisi klinis, fungsi ginjal/hati, dan interaksi obat.
+  </footer>
+
+</main>
+
+<script>
+/* ============================================================
+   KIDOSE — Pediatric Dosage Calculator
+   Logic: real-time calculation based on weight (kg) and age
+   ============================================================ */
+
+// ---------- STATE ----------
+const state = {
+  weight: null,
+  age: null,        // disimpan dalam tahun (desimal)
+  ageUnit: 'tahun',
+  ageMonths: null   // disimpan dalam bulan (untuk lookup berbasis usia)
+};
+
+// ---------- HELPER: format range result ----------
+// Jika min == max → tampilkan satu nilai, jika tidak tampilkan range
+function fmtRange(min, max, unit = 'mg', decimals = 1) {
+  const round = (n) => Number(n.toFixed(decimals)).toString();
+  if (Math.abs(min - max) < 0.01) return `${round(min)} ${unit}`;
+  return `${round(min)} – ${round(max)} ${unit}`;
+}
+
+// ---------- HELPER: ml conversion from mg using strength mg/ml ----------
+function mgToMl(mg, mgPerMl) {
+  return mg / mgPerMl;
+}
+
+// ---------- HELPER: table row renderer ----------
+// Membangun baris tabel <tr> yang rapi dan konsisten
+function tRow(icon, label, value, highlight = false) {
+  return `<tr class="${highlight ? 'highlight' : ''}">
+    <td>${icon} ${label}</td>
+    <td>${value}</td>
+  </tr>`;
+}
+
+// Wrapper tabel standar dengan header opsional
+function tTable(rows, note = '') {
+  return `
+    <div class="overflow-hidden rounded-lg border border-slate-200">
+      <table class="dose-table">
+        <tbody class="divide-y divide-slate-100">${rows}</tbody>
+      </table>
+    </div>
+    ${note ? `<p class="mt-2 text-xs text-slate-500 italic px-1">${note}</p>` : ''}`;
+}
+
+// Tabel dengan section header (untuk obat ganda seperti Ampicillin+Gentamicin)
+function tSection(title) {
+  return `<tr class="sec-header"><td colspan="2">${title}</td></tr>`;
+}
+
+// ---------- DRUG CALCULATION ENGINE ----------
+// Setiap fungsi menerima BB (kg) & usia bulan, mengembalikan HTML output
+const drugCalculators = {
+
+  // ===== A. ANTIPIRETIK & ANALGESIK =====
+  paracetamol: (bb) => {
+    const minMg = 10 * bb, maxMg = 15 * bb;
+    const rows =
+      tRow('🎯', 'Dosis per kali (10–15 mg/kgBB)', fmtRange(minMg, maxMg), true) +
+      tRow('💧', 'Syrup 120 mg/5ml', fmtRange(mgToMl(minMg,24), mgToMl(maxMg,24),'ml')) +
+      tRow('💧', 'Drops 60 mg/0.6ml (100 mg/ml)', fmtRange(mgToMl(minMg,100), mgToMl(maxMg,100),'ml',2)) +
+      tRow('💧', 'Syrup Forte 250 mg/5ml', fmtRange(mgToMl(minMg,50), mgToMl(maxMg,50),'ml')) +
+      tRow('💊', 'Tablet 500 mg', fmtRange(minMg/500, maxMg/500,'tab',2)) +
+      tRow('💉', 'IV (15 mg/kgBB)', `${(15*bb).toFixed(1)} mg`) +
+      tRow('🔵', 'Suppositoria (10–15 mg/kgBB)', fmtRange(minMg, maxMg));
+    return tTable(rows, 'Frekuensi: tiap 4–6 jam, max 4×/hari. Max 90 mg/kgBB/hari.');
+  },
+
+  ibuprofen: (bb) => {
+    const minMg = 5 * bb, maxMg = 10 * bb;
+    const rows =
+      tRow('🎯', 'Dosis per kali (5–10 mg/kgBB)', fmtRange(minMg, maxMg), true) +
+      tRow('💧', 'Syrup 100 mg/5ml', fmtRange(mgToMl(minMg,20), mgToMl(maxMg,20),'ml')) +
+      tRow('💧', 'Syrup Forte 200 mg/5ml', fmtRange(mgToMl(minMg,40), mgToMl(maxMg,40),'ml'));
+    return tTable(rows, 'Frekuensi: tiap 6–8 jam. Hindari pada usia < 6 bulan & dehidrasi.');
+  },
+
+  // ===== B. ANTIKONVULSAN & SEDATIF =====
+  diazepam: (bb) => {
+    const ivMin = 0.2 * bb, ivMax = 0.5 * bb;
+    const ivMaxCap = Math.min(ivMax, 10);
+    const suppDose = bb < 10 ? 5 : 10;
+    const rows =
+      tSection('IV Slow (0.2–0.5 mg/kgBB)') +
+      tRow('🎯', 'Dosis IV', fmtRange(ivMin, ivMaxCap,'mg',2), true) +
+      tRow('💉', 'Sediaan 5 mg/ml', fmtRange(ivMin/5, ivMaxCap/5,'ml',2)) +
+      tSection(`Rektal/Suppositoria (BB ${bb < 10 ? '< 10' : '≥ 10'} kg)`) +
+      tRow('🔵', 'Dosis suppositoria', `${suppDose} mg`, true);
+    return tTable(rows, 'Max IV bolus 10 mg/dosis. Dapat diulang setelah 5–10 menit jika kejang persisten.');
+  },
+
+  fenitoin: (bb) => {
+    const load = 20 * bb;
+    const cappedLoad = Math.min(load, 1000);
+    const rows =
+      tRow('🎯', 'Loading dose IV (15–20 mg/kgBB)', `${(15*bb).toFixed(1)} – ${cappedLoad.toFixed(1)} mg`, true) +
+      tRow('💉', 'Pelarut', 'NS (bukan D5%)') +
+      tRow('⏱️', 'Rate maksimal', '1 mg/kg/menit') +
+      tRow('⚠️', 'Batas maksimal', cappedLoad >= 1000 ? '⛔ Sudah di-cap 1000 mg' : `${cappedLoad.toFixed(0)} mg`);
+    return tTable(rows, 'Monitor EKG & TD selama pemberian. Maintenance: 5–10 mg/kgBB/hari terbagi 2–3 dosis.');
+  },
+
+  midazolam: (bb) => {
+    const min = 0.1 * bb, max = 0.2 * bb;
+    const rows =
+      tRow('🎯', 'Dosis IV (0.1–0.2 mg/kgBB)', fmtRange(min, max,'mg',2), true) +
+      tRow('💉', 'Sediaan 5 mg/ml', fmtRange(min/5, max/5,'ml',2)) +
+      tRow('💉', 'Sediaan 1 mg/ml', fmtRange(min, max,'ml',2)) +
+      tRow('👃', 'Bukal / Intranasal', `${(0.25*bb).toFixed(2)} mg`);
+    return tTable(rows, 'Siapkan alat bantu napas sebelum pemberian.');
+  },
+
+  // ===== C. ANTIBIOTIK =====
+  ampiGenta: (bb) => {
+    const amp = 50 * bb;
+    const gentaMin = 5 * bb, gentaMax = 7.5 * bb;
+    const rows =
+      tSection('Ampicillin IV (50 mg/kgBB/kali)') +
+      tRow('🎯', 'Dosis per kali', `${amp.toFixed(1)} mg`, true) +
+      tRow('⏱️', 'Frekuensi', 'Neonatus <7hr: q12h · >7hr: q8h · >1bln: q6h') +
+      tSection('Gentamicin IV (5–7.5 mg/kgBB/hari)') +
+      tRow('🎯', 'Dosis harian', fmtRange(gentaMin, gentaMax), true) +
+      tRow('⏱️', 'Frekuensi', 'Once daily dosing (direkomendasikan)') +
+      tRow('⚠️', 'Monitoring', 'Fungsi ginjal & ototoksisitas');
+    return tTable(rows);
+  },
+
+  ceftriCefota: (bb) => {
+    const ceftriMin = 50 * bb, ceftriMax = 80 * bb;
+    const cefota = 50 * bb;
+    const rows =
+      tSection('Ceftriaxone IV (50–80 mg/kgBB/hari)') +
+      tRow('🎯', 'Dosis harian', fmtRange(ceftriMin, ceftriMax), true) +
+      tRow('⏱️', 'Frekuensi', 'Single dose atau terbagi 2') +
+      tRow('⚠️', 'Meningitis', `${(100*bb).toFixed(0)} mg/hari (max 4g)`) +
+      tSection('Cefotaxime IV (50 mg/kgBB/kali)') +
+      tRow('🎯', 'Dosis per kali', `${cefota.toFixed(1)} mg`, true) +
+      tRow('⏱️', 'Frekuensi', 'Tiap 8–12 jam (Meningitis: tiap 6 jam)');
+    return tTable(rows);
+  },
+
+  amoxClav: (bb) => {
+    const minDaily = 25 * bb, maxDaily = 45 * bb;
+    const d2min = minDaily/2, d2max = maxDaily/2;
+    const d3min = minDaily/3, d3max = maxDaily/3;
+    const rows =
+      tRow('🎯', 'Total harian (25–45 mg/kgBB)', fmtRange(minDaily, maxDaily), true) +
+      tSection('Terbagi 2 dosis (tiap 12 jam)') +
+      tRow('📋', 'Dosis per kali', fmtRange(d2min, d2max) + '/kali') +
+      tRow('💧', 'Syrup 250 mg/5ml', fmtRange(mgToMl(d2min,50), mgToMl(d2max,50),'ml') + '/kali') +
+      tSection('Terbagi 3 dosis (tiap 8 jam)') +
+      tRow('📋', 'Dosis per kali', fmtRange(d3min, d3max) + '/kali') +
+      tRow('💧', 'Syrup 125 mg/5ml', fmtRange(mgToMl(d3min,25), mgToMl(d3max,25),'ml') + '/kali');
+    return tTable(rows, 'Dosis berdasarkan komponen amoxicillin. ISK/otitis berat: hingga 90 mg/kgBB/hari.');
+  },
+
+  cefixime: (bb) => {
+    const perDose = 4 * bb;
+    const daily = 8 * bb;
+    const rows =
+      tRow('🎯', 'Dosis per kali (4 mg/kgBB tiap 12 jam)', `${perDose.toFixed(1)} mg`, true) +
+      tRow('💧', 'Syrup 100 mg/5ml', `${mgToMl(perDose, 20).toFixed(1)} ml`) +
+      tRow('📋', 'Total harian (8 mg/kgBB)', `${daily.toFixed(1)} mg`) +
+      tRow('⚠️', 'Batas maksimal', '400 mg/hari');
+    return tTable(rows, 'Indikasi: ISK, demam tifoid, otitis media.');
+  },
+
+  // ===== D. CAIRAN =====
+  rumatan: (bb) => {
+    let total = 0;
+    if (bb <= 10) total = 100 * bb;
+    else if (bb <= 20) total = 1000 + 50 * (bb - 10);
+    else total = 1500 + 20 * (bb - 20);
+    const perHour = total / 24;
+    const rows =
+      tRow('🎯', 'Kebutuhan 24 jam (Holiday-Segar)', `${total.toFixed(0)} ml/hari`, true) +
+      tRow('⏱️', 'Rate per jam', `${perHour.toFixed(1)} ml/jam`) +
+      tRow('💧', 'Tetes makro (20 gtt/ml)', `${(perHour/3).toFixed(0)} tpm`) +
+      tRow('💧', 'Tetes mikro (60 gtt/ml)', `${perHour.toFixed(0)} tpm`) +
+      tSection('Rekomendasi Jenis Cairan') +
+      tRow('👶', 'Neonatus', 'D10% atau D5% ¼NS') +
+      tRow('🧒', 'Bayi / Anak kecil', 'KA-EN 3B atau D5% ¼NS / D5% ½NS') +
+      tRow('🧑', 'Anak besar', 'KA-EN 1B atau D5% ½NS / RL');
+    return tTable(rows, 'Rumus: 100 ml/kg (10kg pertama) + 50 ml/kg (10kg kedua) + 20 ml/kg (sisa).');
+  },
+
+  resusitasi: (bb) => {
+    const bolus = 20 * bb;
+    const rows =
+      tRow('🎯', 'Bolus (20 ml/kgBB)', `${bolus.toFixed(0)} ml`, true) +
+      tRow('💧', 'Cairan pilihan', 'RL atau NaCl 0.9%') +
+      tRow('⏱️', 'Waktu pemberian', '10–20 menit (syok)') +
+      tRow('🔄', 'Reassessment', 'Setelah setiap bolus') +
+      tRow('⚠️', 'Batas bolus', 'Max 3× pada syok hipovolemik');
+    return tTable(rows, 'Kardiogenik: gunakan bolus kecil 5–10 ml/kgBB + reassessment ketat.');
+  },
+
+  diareDehidrasi: (bb, ageMonths) => {
+    const oralit3jam = 75 * bb;
+    const oralitMaint = 10 * bb;
+    const zinc = ageMonths < 6 ? 10 : 20;
+    const rows =
+      tRow('🎯', 'Oralit rehidrasi (75 ml/kgBB / 3 jam)', `${oralit3jam.toFixed(0)} ml`, true) +
+      tRow('💧', 'Oralit maintenance (tiap BAB cair)', `${oralitMaint.toFixed(0)} ml`) +
+      tRow('💊', `Zinc (usia ${ageMonths < 6 ? '< 6 bln' : '≥ 6 bln'})`, `${zinc} mg/hari × 10 hari`) +
+      tSection('Rencana Rehidrasi WHO') +
+      tRow('✅', 'Tanpa dehidrasi → Rencana A', 'Oralit ad libitum') +
+      tRow('🟡', 'Ringan-Sedang → Rencana B', '75 ml/kg / 3 jam') +
+      tRow('🔴', 'Berat → Rencana C', 'IV RL 100 ml/kg');
+    return tTable(rows);
+  },
+
+  // ===== E. RESPIRATORI =====
+  nebulisasi: (bb, ageMonths, severity) => {
+    const rekomMap = {
+      ringan:  'Salbutamol ½ resp + NaCl 0.9% ad 3 ml',
+      sedang:  'Salbutamol 1 resp + Ipratropium Br 1 resp',
+      berat:   'Salbutamol 1 resp + Ipratropium Br 1 resp + Budesonide 0.5 mg'
+    };
+    const ipraDose = ageMonths < 72 ? '125–250 mcg' : '250–500 mcg';
+    const rows =
+      tRow('🎯', `Rekomendasi (gejala ${severity})`, rekomMap[severity], true) +
+      tRow('⏱️', 'Frekuensi', 'Tiap 20 menit, max 3×') +
+      tSection('Sediaan Nebulisasi') +
+      tRow('💨', 'Salbutamol (2.5 mg/resp)', '½ – 1 resp') +
+      tRow('💨', 'Ipratropium Br (250 mcg/ml)', ipraDose) +
+      tRow('💨', 'Budesonide neb', '0.25–0.5 mg') +
+      tSection('Panduan Tambahan') +
+      tRow('🫁', 'Oksigen jika SpO₂', '< 92% → pasang O₂') +
+      tRow('💉', 'Steroid sistemik (berat)', 'Dexamethasone / Methylpred IV');
+    return tTable(rows, 'Evaluasi respon klinis setiap 20 menit.');
+  },
+
+  ambroxol: (bb) => {
+    const perDose = 0.5 * bb;
+    const daily = perDose * 3;
+    const rows =
+      tRow('🎯', 'Dosis per kali (0.5 mg/kgBB)', `${perDose.toFixed(1)} mg`, true) +
+      tRow('💧', 'Syrup 15 mg/5ml', `${mgToMl(perDose, 3).toFixed(1)} ml`) +
+      tRow('💧', 'Syrup 30 mg/5ml', `${mgToMl(perDose, 6).toFixed(1)} ml`) +
+      tRow('📋', 'Total harian (3×/hari)', `${daily.toFixed(1)} mg/hari`);
+    return tTable(rows);
+  },
+
+  // ===== F. KORTIKOSTEROID =====
+  dexamethasone: (bb) => {
+    const minMg = 0.15 * bb, maxMg = 0.6 * bb;
+    const rows =
+      tRow('🎯', 'Total harian (0.15–0.6 mg/kgBB)', fmtRange(minMg, maxMg,'mg',2), true) +
+      tRow('💉', 'Sediaan injeksi 5 mg/ml', fmtRange(minMg/5, maxMg/5,'ml',2)) +
+      tSection('Dosis Spesifik per Indikasi') +
+      tRow('🎗️', 'Croup (dosis tunggal)', `${(0.6*bb).toFixed(2)} mg`) +
+      tRow('🫁', 'Asma akut (0.6 mg/kgBB)', `${(0.6*bb).toFixed(2)} mg (max 16 mg)`) +
+      tRow('⚡', 'Anti-inflamasi umum', `${(0.3*bb).toFixed(2)} mg/kali tiap 6–12 jam`);
+    return tTable(rows, 'Untuk syok: dosis lebih tinggi sesuai indikasi spesifik.');
+  },
+
+  methylpred: (bb) => {
+    const minMg = 1 * bb, maxMg = 2 * bb;
+    const rows =
+      tRow('🎯', 'Total harian IV (1–2 mg/kgBB)', fmtRange(minMg, maxMg), true) +
+      tRow('📋', 'Per dosis tiap 6 jam', fmtRange(minMg/4, maxMg/4) + '/kali') +
+      tRow('⚡', 'Pulse therapy (status asthmaticus)', `${(10*bb).toFixed(0)} – ${(30*bb).toFixed(0)} mg/hari`);
+    return tTable(rows);
+  },
+
+  // ===== G. ANTIEMETIK & ANTIHISTAMIN =====
+  ondansetron: (bb, ageMonths) => {
+    const dose = 0.15 * bb;
+    const maxDose = ageMonths < 144 ? 4 : 8;
+    const cappedDose = Math.min(dose, maxDose);
+    const capped = dose > maxDose;
+    const rows =
+      tRow('🎯', `Dosis per kali (0.15 mg/kgBB${capped ? ` → capped max ${maxDose} mg` : ''})`, `${cappedDose.toFixed(2)} mg`, true) +
+      tRow('💉', 'IV/IM 2 mg/ml', `${(cappedDose/2).toFixed(2)} ml`) +
+      tRow('💧', 'Syrup 4 mg/5ml', `${mgToMl(cappedDose, 0.8).toFixed(1)} ml`) +
+      tRow('💊', 'Tablet 4 mg', `${(cappedDose/4).toFixed(2)} tab`) +
+      tRow('⏱️', 'Frekuensi', 'Tiap 8 jam');
+    return tTable(rows, 'Hati-hati QT prolongation. Max 8 mg/dosis pada remaja.');
+  },
+
+  domperidone: (bb) => {
+    const min = 0.2 * bb, max = 0.4 * bb;
+    const rows =
+      tRow('🎯', 'Dosis per kali (0.2–0.4 mg/kgBB)', fmtRange(min, max,'mg',2), true) +
+      tRow('💧', 'Syrup 5 mg/5ml (1 mg/ml)', fmtRange(min, max,'ml',1)) +
+      tRow('💊', 'Tablet 10 mg', fmtRange(min/10, max/10,'tab',2)) +
+      tRow('⏱️', 'Frekuensi', '3× sehari sebelum makan');
+    return tTable(rows, 'Max 30 mg/hari. Hindari pada kelainan jantung / QT panjang.');
+  },
+
+  cetirizine: (bb, ageMonths) => {
+    let dose = '', syrup = '', tablet = '';
+    if (ageMonths < 6)        { dose = '⚠️ Tidak direkomendasikan'; syrup = '—'; tablet = '—'; }
+    else if (ageMonths < 24)  { dose = '2.5 mg 1× sehari'; syrup = '2.5 ml/hari'; tablet = 'Gunakan syrup'; }
+    else if (ageMonths < 72)  { dose = '2.5 mg 2× sehari (atau 5 mg 1×)'; syrup = '5 ml/hari (terbagi)'; tablet = 'Gunakan syrup'; }
+    else if (ageMonths < 144) { dose = '5–10 mg 1× sehari'; syrup = '5–10 ml/hari'; tablet = '½ – 1 tab'; }
+    else                      { dose = '10 mg 1× sehari'; syrup = '10 ml/hari'; tablet = '1 tab'; }
+    const rows =
+      tRow('🎯', 'Dosis (berbasis usia, bukan BB)', dose, true) +
+      tRow('💧', 'Syrup 5 mg/5ml', syrup) +
+      tRow('💊', 'Tablet 10 mg', tablet) +
+      tRow('ℹ️', 'Mekanisme', 'Antihistamin gen-2 — minimal sedatif');
+    return tTable(rows, 'Dosis cetirizine berdasarkan USIA, bukan berat badan (IDAI/CDC).');
+  },
+
+  ctm: (bb) => {
+    const daily = 0.35 * bb;
+    const per3 = daily / 3, per4 = daily / 4;
+    const rows =
+      tRow('🎯', 'Total harian (0.35 mg/kgBB)', `${daily.toFixed(2)} mg`, true) +
+      tRow('📋', 'Per dosis tiap 8 jam (÷3)', `${per3.toFixed(2)} mg/kali`) +
+      tRow('📋', 'Per dosis tiap 6 jam (÷4)', `${per4.toFixed(2)} mg/kali`) +
+      tRow('💊', 'Tablet 4 mg (÷3)', `${(per3/4).toFixed(2)} tab × 3`);
+    return tTable(rows, 'Generasi 1 — efek sedatif. Hindari usia < 2 tahun.');
+  },
+
+  // ===== H. ANTI-SEKRESI =====
+  ranitidine: (bb) => {
+    const ivMin = 1 * bb, ivMax = 2 * bb;
+    const oralMin = 2 * bb, oralMax = 4 * bb;
+    const rows =
+      tSection('Intravena (1–2 mg/kgBB tiap 8 jam)') +
+      tRow('🎯', 'Dosis IV per kali', fmtRange(ivMin, ivMax,'mg',1), true) +
+      tRow('💉', 'Sediaan 25 mg/ml', fmtRange(ivMin/25, ivMax/25,'ml',2)) +
+      tSection('Oral/Syrup (2–4 mg/kgBB tiap 12 jam)') +
+      tRow('🎯', 'Dosis oral per kali', fmtRange(oralMin, oralMax), true) +
+      tRow('⚠️', 'Perhatian', 'Ditarik di banyak negara (risiko NDMA)') +
+      tRow('🔄', 'Alternatif', 'Omeprazole / Lansoprazole');
+    return tTable(rows);
+  }
+};
+
+// ---------- CATEGORY STRUCTURE ----------
+const categories = [
+  {
+    id: 'A', icon: '🌡️', title: 'Antipiretik & Analgesik', color: 'rose',
+    drugs: [
+      { id: 'paracetamol', name: 'Paracetamol', sub: 'Asetaminofen — antipiretik lini 1', fn: 'paracetamol' },
+      { id: 'ibuprofen',   name: 'Ibuprofen',   sub: 'NSAID — antipiretik & antiinflamasi', fn: 'ibuprofen' }
+    ]
+  },
+  {
+    id: 'B', icon: '⚡', title: 'Antikonvulsan & Sedatif', color: 'purple',
+    drugs: [
+      { id: 'diazepam',  name: 'Diazepam',  sub: 'BZD — kejang akut, IV / Rektal', fn: 'diazepam' },
+      { id: 'fenitoin',  name: 'Fenitoin',  sub: 'Anti-kejang — loading dose IV', fn: 'fenitoin' },
+      { id: 'midazolam', name: 'Midazolam', sub: 'BZD — status epileptikus, sedasi', fn: 'midazolam' }
+    ]
+  },
+  {
+    id: 'C', icon: '💊', title: 'Antibiotik', color: 'sky',
+    drugs: [
+      { id: 'ampiGenta',   name: 'Ampicillin + Gentamicin', sub: 'Empiris neonatus/sepsis dini', fn: 'ampiGenta' },
+      { id: 'ceftriCefota', name: 'Ceftriaxone / Cefotaxime', sub: 'Sefalosporin gen-3, lini empiris', fn: 'ceftriCefota' },
+      { id: 'amoxClav',    name: 'Amoxicillin-Clavulanate', sub: 'Oral, ISPA & otitis', fn: 'amoxClav' },
+      { id: 'cefixime',    name: 'Cefixime', sub: 'Sefalosporin oral, ISK & tifoid', fn: 'cefixime' }
+    ]
+  },
+  {
+    id: 'D', icon: '💧', title: 'Cairan Rumatan & Resusitasi', color: 'cyan',
+    drugs: [
+      { id: 'rumatan',        name: 'Cairan Rumatan (Holiday-Segar)', sub: '100/50/20 ml/kg per 24 jam', fn: 'rumatan' },
+      { id: 'resusitasi',     name: 'Cairan Resusitasi', sub: 'Bolus RL/NS 20 ml/kgBB', fn: 'resusitasi' },
+      { id: 'diareDehidrasi', name: 'Gastroenteritis & Dehidrasi', sub: 'Oralit + Zinc — protokol WHO/IDAI', fn: 'diareDehidrasi' }
+    ]
+  },
+  {
+    id: 'E', icon: '🫁', title: 'Respiratori & Nebulisasi', color: 'teal',
+    drugs: [
+      { id: 'nebulisasi', name: 'Nebulisasi (Salbutamol + Ipratropium ± Budesonide)', sub: 'Asma, bronkiolitis, croup', fn: 'nebulisasi', hasSeverity: true },
+      { id: 'ambroxol',   name: 'Ambroxol', sub: 'Mukolitik oral', fn: 'ambroxol' }
+    ]
+  },
+  {
+    id: 'F', icon: '🛡️', title: 'Kortikosteroid', color: 'amber',
+    drugs: [
+      { id: 'dexamethasone', name: 'Dexamethasone', sub: 'Croup, asma akut, anti-inflamasi', fn: 'dexamethasone' },
+      { id: 'methylpred',    name: 'Methylprednisolone', sub: 'Asma berat, status asthmaticus', fn: 'methylpred' }
+    ]
+  },
+  {
+    id: 'G', icon: '🤢', title: 'Antiemetik & Antihistamin', color: 'indigo',
+    drugs: [
+      { id: 'ondansetron', name: 'Ondansetron', sub: 'Antiemetik 5-HT₃ — lini 1', fn: 'ondansetron' },
+      { id: 'domperidone', name: 'Domperidone',  sub: 'Antiemetik prokinetik', fn: 'domperidone' },
+      { id: 'cetirizine',  name: 'Cetirizine',   sub: 'Antihistamin gen-2 (berbasis usia)', fn: 'cetirizine' },
+      { id: 'ctm',         name: 'CTM (Chlorpheniramine)', sub: 'Antihistamin gen-1', fn: 'ctm' }
+    ]
+  },
+  {
+    id: 'H', icon: '🛑', title: 'Anti-Sekresi / Gastroprotektor', color: 'orange',
+    drugs: [
+      { id: 'ranitidine', name: 'Ranitidine', sub: 'H₂-blocker (IV/oral)', fn: 'ranitidine' }
+    ]
+  }
+];
+
+// ---------- RENDER CATEGORIES ----------
+function renderCategories() {
+  const container = document.getElementById('categories');
+  container.innerHTML = categories.map(cat => `
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+      <button onclick="toggleAccordion('cat-${cat.id}')" class="w-full px-5 py-4 flex items-center gap-3 hover:bg-slate-50 transition text-left">
+        <div class="text-2xl">${cat.icon}</div>
+        <div class="flex-1">
+          <div class="text-xs font-semibold text-slate-400 tracking-wider">KATEGORI ${cat.id}</div>
+          <div class="font-semibold text-slate-800">${cat.title}</div>
+        </div>
+        <span class="pill bg-slate-100 text-slate-600">${cat.drugs.length} obat</span>
+        <svg id="chevron-cat-${cat.id}" class="chevron w-5 h-5 text-slate-400" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+      </button>
+      <div id="cat-${cat.id}" class="accordion-content">
+        <div class="px-5 pb-5 pt-1 space-y-3 border-t border-slate-100">
+          ${cat.drugs.map(drug => `
+            <div class="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden">
+              <div class="px-4 py-3 flex items-center gap-3 ${drug.hasSeverity ? '' : ''}">
+                <div class="flex-1">
+                  <div class="font-semibold text-slate-800">${drug.name}</div>
+                  <div class="text-xs text-slate-500">${drug.sub}</div>
+                </div>
+                ${drug.hasSeverity ? `
+                  <select id="sev-${drug.id}" onchange="recalculate()" class="text-xs border border-slate-300 rounded-md px-2 py-1 bg-white">
+                    <option value="ringan">Ringan</option>
+                    <option value="sedang" selected>Sedang</option>
+                    <option value="berat">Berat</option>
+                  </select>
+                ` : ''}
+              </div>
+              <div id="result-${drug.id}" class="px-4 pb-4 text-sm text-slate-400 italic">
+                Menunggu input BB...
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ---------- ACCORDION ----------
+function toggleAccordion(id) {
+  const content = document.getElementById(id);
+  const chevron = document.getElementById('chevron-' + id);
+  content.classList.toggle('open');
+  chevron.classList.toggle('open');
+}
+
+// ---------- INPUT VALIDATION & WARNINGS ----------
+function checkWarnings() {
+  const warningArea = document.getElementById('warningArea');
+  const warnings = [];
+
+  if (state.weight !== null) {
+    if (state.weight > 50) warnings.push(`<b>BB ${state.weight} kg</b> di luar nalar pediatri umum (&gt; 50 kg) — verifikasi.`);
+    if (state.weight < 1)  warnings.push(`<b>BB ${state.weight} kg</b> sangat rendah — pastikan input benar.`);
+    if (state.weight <= 0) warnings.push(`<b>BB tidak valid</b> — harus &gt; 0.`);
+  }
+  if (state.ageMonths !== null) {
+    if (state.ageMonths > 216) warnings.push(`<b>Usia ${state.ageUnit === 'tahun' ? state.age + ' tahun' : state.age + ' bulan'}</b> melebihi rentang pediatri (&gt; 18 tahun).`);
+  }
+  // Cross-check BB vs umur (kasar): BB normal ≈ (umur tahun × 2) + 8 untuk 2–12 thn
+  if (state.weight && state.ageMonths && state.ageMonths >= 24 && state.ageMonths <= 144) {
+    const expected = (state.ageMonths / 12) * 2 + 8;
+    const ratio = state.weight / expected;
+    if (ratio < 0.6) warnings.push(`BB jauh di bawah perkiraan (${expected.toFixed(1)} kg). Pertimbangkan gizi buruk.`);
+    if (ratio > 1.6) warnings.push(`BB jauh di atas perkiraan (${expected.toFixed(1)} kg). Verifikasi atau pertimbangkan obesitas.`);
+  }
+
+  if (warnings.length === 0) {
+    warningArea.classList.add('hidden');
+    warningArea.innerHTML = '';
+  } else {
+    warningArea.classList.remove('hidden');
+    warningArea.innerHTML = `
+      <div class="bg-amber-50 border border-amber-300 rounded-lg p-3 text-sm text-amber-900 space-y-1">
+        ${warnings.map(w => `<div class="flex gap-2"><span>⚠️</span><span>${w}</span></div>`).join('')}
+      </div>`;
+  }
+}
+
+// ---------- MAIN RECALCULATE ----------
+function recalculate() {
+  // Sync state
+  const ageVal = parseFloat(document.getElementById('age').value);
+  const weightVal = parseFloat(document.getElementById('weight').value);
+  const unit = document.getElementById('ageUnit').value;
+
+  state.weight = !isNaN(weightVal) && weightVal > 0 ? weightVal : null;
+  state.age = !isNaN(ageVal) && ageVal >= 0 ? ageVal : null;
+  state.ageUnit = unit;
+  state.ageMonths = state.age !== null ? (unit === 'tahun' ? state.age * 12 : state.age) : null;
+
+  // Update status bar
+  const statusBar = document.getElementById('statusBar');
+  if (state.weight === null) {
+    statusBar.className = 'mt-4 p-3 bg-slate-100 rounded-lg text-sm text-slate-600 text-center';
+    statusBar.innerHTML = '💡 Masukkan <b>BB</b> untuk memulai kalkulasi otomatis';
+  } else {
+    statusBar.className = 'mt-4 p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-sm text-emerald-800 text-center';
+    statusBar.innerHTML = `✅ Pasien: <b>BB ${state.weight} kg</b>${state.age !== null ? ` · <b>${state.age} ${state.ageUnit}</b> (${state.ageMonths.toFixed(0)} bulan)` : ''} — Kalkulasi aktif`;
+  }
+
+  // Validation warnings
+  checkWarnings();
+
+  // Render each drug's result
+  categories.forEach(cat => {
+    cat.drugs.forEach(drug => {
+      const el = document.getElementById('result-' + drug.id);
+      if (!el) return;
+      if (state.weight === null) {
+        el.className = 'px-4 pb-4 text-sm text-slate-400 italic';
+        el.innerHTML = 'Menunggu input BB...';
+        return;
+      }
+      // Some calculators need ageMonths
+      const needsAge = ['nebulisasi','ondansetron','cetirizine','diareDehidrasi'].includes(drug.fn);
+      if (needsAge && state.ageMonths === null) {
+        el.className = 'px-4 pb-4 text-sm text-amber-600 italic';
+        el.innerHTML = '⚠️ Obat ini memerlukan input usia pasien.';
+        return;
+      }
+      el.className = 'px-4 pb-4 result-card';
+      try {
+        let html;
+        if (drug.hasSeverity) {
+          const sev = document.getElementById('sev-' + drug.id).value;
+          html = drugCalculators[drug.fn](state.weight, state.ageMonths, sev);
+        } else if (needsAge) {
+          html = drugCalculators[drug.fn](state.weight, state.ageMonths);
+        } else {
+          html = drugCalculators[drug.fn](state.weight);
+        }
+        el.innerHTML = html;
+      } catch (e) {
+        el.innerHTML = `<span class="text-rose-600">Error kalkulasi: ${e.message}</span>`;
+      }
+    });
+  });
+}
+
+// ---------- INIT ----------
+document.addEventListener('DOMContentLoaded', () => {
+  renderCategories();
+  // Real-time listeners
+  document.getElementById('age').addEventListener('input', recalculate);
+  document.getElementById('weight').addEventListener('input', recalculate);
+  document.getElementById('ageUnit').addEventListener('change', recalculate);
+  // Auto-open first category
+  toggleAccordion('cat-A');
+});
+</script>
+
+</body>
+</html>
