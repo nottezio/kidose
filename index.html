@@ -5,7 +5,39 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>KIDOSE v2 — Kalkulator Dosis Pediatri</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%23059669'/%3E%3Cpath d='M50 25v50M25 50h50' stroke='white' stroke-width='12' stroke-linecap='round'/%3E%3C/svg%3E">
-<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.tailwindcss.com">
+// ──────────────────────────────────────────
+// PROFESSIONAL GATE
+// ──────────────────────────────────────────
+function toggleGateBtn() {
+  const checked = document.getElementById('gate-checkbox').checked;
+  document.getElementById('gate-confirm-btn').disabled = !checked;
+}
+
+function unlockApp() {
+  document.getElementById('gate-overlay').classList.add('dismissed');
+  document.body.classList.remove('gated');
+  // Persist for session only (not localStorage — re-gate on new tab)
+  sessionStorage.setItem('kidose_gated', '1');
+}
+
+function refuseGate() {
+  document.getElementById('gate-overlay').classList.add('dismissed');
+  const refused = document.getElementById('gate-refused');
+  refused.style.display = 'flex';
+  refused.style.alignItems = 'center';
+  refused.style.justifyContent = 'center';
+}
+
+// Check session — skip gate if already confirmed in same tab session
+(function() {
+  if (sessionStorage.getItem('kidose_gated') === '1') {
+    document.getElementById('gate-overlay').classList.add('dismissed');
+    document.body.classList.remove('gated');
+  }
+})();
+
+</script>
 <style>
   body { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
   .accordion-content { max-height: 0; overflow: hidden; transition: max-height 0.35s ease-out; }
@@ -28,9 +60,99 @@
   .drug-card.search-no-match { opacity: 0.28; pointer-events: none; }
   /* ── Category dimmed when no match ── */
   .cat-wrapper.search-hidden .cat-header-btn { opacity: 0.45; }
+  /* ── Professional Gate ── */
+  #gate-overlay {
+    position: fixed; inset: 0; z-index: 9999;
+    background: rgba(15, 23, 42, 0.82);
+    backdrop-filter: blur(6px);
+    display: flex; align-items: center; justify-content: center;
+    padding: 1rem;
+  }
+  #gate-overlay.dismissed { display: none; }
+  #gate-box {
+    background: #fff; border-radius: 1.25rem;
+    max-width: 440px; width: 100%;
+    box-shadow: 0 25px 60px rgba(0,0,0,0.35);
+    overflow: hidden;
+    animation: gateIn 0.3s ease-out;
+  }
+  @keyframes gateIn {
+    from { opacity:0; transform: scale(0.95) translateY(10px); }
+    to   { opacity:1; transform: scale(1) translateY(0); }
+  }
+  #gate-confirm-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  body.gated main { filter: blur(3px); pointer-events: none; user-select: none; }
 </style>
 </head>
-<body class="bg-slate-50 min-h-screen pb-14">
+<body class="bg-slate-50 min-h-screen pb-14 gated">
+
+<!-- ═══════════════════════════════════════════
+     PROFESSIONAL GATE — shown before app access
+═══════════════════════════════════════════ -->
+<div id="gate-overlay">
+  <div id="gate-box">
+    <!-- Red header bar -->
+    <div class="bg-rose-600 px-6 py-4 flex items-center gap-3">
+      <div class="bg-white/20 rounded-lg p-2 shrink-0">
+        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+        </svg>
+      </div>
+      <div>
+        <div class="text-white font-bold text-base leading-tight">Khusus Tenaga Kesehatan</div>
+        <div class="text-rose-100 text-xs">For Licensed Healthcare Professionals Only</div>
+      </div>
+    </div>
+    <!-- Body -->
+    <div class="px-6 py-5 space-y-4">
+      <p class="text-slate-700 text-sm leading-relaxed">
+        Aplikasi ini dirancang sebagai <b>alat bantu klinis</b> untuk tenaga kesehatan berlisensi
+        (dokter, perawat, apoteker, bidan) dalam menghitung dosis obat pediatri.
+      </p>
+      <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 text-xs text-amber-900 leading-relaxed space-y-1.5">
+        <div class="flex gap-2"><span>⚠️</span><span><b>Bukan untuk masyarakat umum.</b> Penggunaan oleh non-tenaga kesehatan dapat membahayakan jiwa pasien.</span></div>
+        <div class="flex gap-2"><span>⚠️</span><span>Selalu verifikasi dosis dengan formularium resmi (IDAI, BNF for Children) sebelum pemberian.</span></div>
+        <div class="flex gap-2"><span>⚠️</span><span>Hasil kalkulasi bukan pengganti penilaian klinis profesional.</span></div>
+      </div>
+      <!-- Checkbox gate -->
+      <label class="flex items-start gap-3 cursor-pointer group">
+        <input type="checkbox" id="gate-checkbox" onchange="toggleGateBtn()"
+          class="mt-0.5 w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 shrink-0 cursor-pointer">
+        <span class="text-sm text-slate-700 leading-snug group-hover:text-slate-900 transition">
+          Saya adalah tenaga kesehatan berlisensi dan akan menggunakan aplikasi ini sebagai alat bantu klinis, bukan sebagai satu-satunya dasar pengambilan keputusan medis.
+        </span>
+      </label>
+    </div>
+    <!-- Actions -->
+    <div class="px-6 pb-6 space-y-2">
+      <button id="gate-confirm-btn" onclick="unlockApp()" disabled
+        class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-sm transition">
+        ✅ Saya Memahami — Lanjutkan
+      </button>
+      <button onclick="refuseGate()"
+        class="w-full py-2.5 text-sm text-slate-500 hover:text-slate-700 transition">
+        Saya bukan tenaga kesehatan
+      </button>
+    </div>
+  </div>
+</div>
+<!-- Gate: refused state -->
+<div id="gate-refused" class="hidden fixed inset-0 z-9999 bg-slate-900 flex items-center justify-content-center p-8" style="z-index:9999; display:none;">
+  <div class="max-w-sm mx-auto text-center space-y-4">
+    <div class="text-6xl">🏥</div>
+    <h2 class="text-white text-xl font-bold">Terima kasih telah jujur</h2>
+    <p class="text-slate-300 text-sm leading-relaxed">
+      Aplikasi ini tidak dirancang untuk digunakan oleh masyarakat umum.<br><br>
+      Jika anak Anda membutuhkan pengobatan, hubungi dokter atau fasilitas kesehatan terdekat.
+    </p>
+    <div class="pt-2 space-y-2">
+      <p class="text-slate-400 text-xs">Butuh bantuan segera?</p>
+      <div class="text-emerald-400 font-mono font-bold text-lg">Hotline 119 ext 8</div>
+      <div class="text-slate-400 text-xs">(Layanan Kesehatan Nasional Indonesia)</div>
+    </div>
+  </div>
+</div>
+
 
 <!-- ═══════════════════════════════════════════
      HEADER
