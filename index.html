@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>KIDOSE v2 — Kalkulator Dosis Pediatri</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%23059669'/%3E%3Cpath d='M50 25v50M25 50h50' stroke='white' stroke-width='12' stroke-linecap='round'/%3E%3C/svg%3E">
-<script src="https://cdn.tailwindcss.com">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
 // ──────────────────────────────────────────
 // PROFESSIONAL GATE
 // ──────────────────────────────────────────
@@ -17,26 +18,15 @@ function toggleGateBtn() {
 function unlockApp() {
   document.getElementById('gate-overlay').classList.add('dismissed');
   document.body.classList.remove('gated');
-  // Persist for session only (not localStorage — re-gate on new tab)
   sessionStorage.setItem('kidose_gated', '1');
 }
 
 function refuseGate() {
-  document.getElementById('gate-overlay').classList.add('dismissed');
+  const overlay = document.getElementById('gate-overlay');
   const refused = document.getElementById('gate-refused');
+  overlay.classList.add('dismissed');
   refused.style.display = 'flex';
-  refused.style.alignItems = 'center';
-  refused.style.justifyContent = 'center';
 }
-
-// Check session — skip gate if already confirmed in same tab session
-(function() {
-  if (sessionStorage.getItem('kidose_gated') === '1') {
-    document.getElementById('gate-overlay').classList.add('dismissed');
-    document.body.classList.remove('gated');
-  }
-})();
-
 </script>
 <style>
   body { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
@@ -1436,6 +1426,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Auto-open first category
   setAccordion('cat-A', true);
+
+  // Gate: skip if already confirmed this session
+  if (sessionStorage.getItem('kidose_gated') === '1') {
+    document.getElementById('gate-overlay').classList.add('dismissed');
+    document.body.classList.remove('gated');
+  }
 });
 </script>
 </body>
