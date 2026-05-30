@@ -72,6 +72,16 @@ function refuseGate() {
   }
   #gate-confirm-btn:disabled { opacity: 0.4; cursor: not-allowed; }
   body.gated main { filter: blur(3px); pointer-events: none; user-select: none; }
+  /* ── Source citation badge ── */
+  .src-badge {
+    display: inline-flex; align-items: center; gap: 3px;
+    padding: 2px 8px; border-radius: 9999px;
+    font-size: 0.66rem; font-weight: 600;
+    background: #f1f5f9; color: #64748b;
+    border: 1px solid #e2e8f0;
+    cursor: help; white-space: nowrap;
+  }
+  .src-badge:hover { background: #e2e8f0; color: #475569; }
 </style>
 </head>
 <body class="bg-slate-50 min-h-screen pb-14 gated">
@@ -208,16 +218,23 @@ function refuseGate() {
   <!-- ═══════════════════════════════════════════
        SEARCH BAR
   ═══════════════════════════════════════════ -->
-  <div class="relative">
-    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-      <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" d="M21 21l-4.35-4.35"/></svg>
+  <div class="flex gap-2">
+    <div class="relative flex-1">
+      <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+        <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" d="M21 21l-4.35-4.35"/></svg>
+      </div>
+      <input id="searchBar" type="text" autocomplete="off" enterkeyhint="search"
+        placeholder="Cari obat, indikasi, atau rute… (mis: 'kejang', 'asma', 'syok')"
+        class="w-full pl-12 pr-10 py-3.5 bg-white border border-slate-300 rounded-xl shadow-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none text-sm">
+      <button id="clearSearchBtn" onclick="clearSearch()"
+        class="hidden absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-slate-600 transition">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
     </div>
-    <input id="searchBar" type="text" autocomplete="off"
-      placeholder="Cari obat, indikasi, atau rute… (mis: 'paracetamol', 'kejang', 'asma', 'syok')"
-      class="w-full pl-12 pr-10 py-3.5 bg-white border border-slate-300 rounded-xl shadow-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none text-sm">
-    <button id="clearSearchBtn" onclick="clearSearch()"
-      class="hidden absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-slate-600 transition">
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" d="M6 18L18 6M6 6l12 12"/></svg>
+    <button id="goSearchBtn" onclick="triggerSearchScroll()"
+      class="shrink-0 px-4 sm:px-5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold rounded-xl shadow-sm transition flex items-center gap-2 text-sm">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" d="M21 21l-4.35-4.35"/></svg>
+      <span class="hidden sm:inline">Cari</span>
     </button>
   </div>
   <!-- Search result banner -->
@@ -233,8 +250,10 @@ function refuseGate() {
   <div id="categoriesContainer" class="space-y-3"></div>
 
   <!-- DISCLAIMER -->
-  <footer class="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 leading-relaxed">
-    <b>⚠️ Disclaimer:</b> KIDOSE adalah alat bantu klinis. Selalu verifikasi dosis dengan formularium resmi (IDAI, BNF for Children, WHO) sebelum pemberian obat. Pertimbangkan kondisi klinis individu, fungsi organ, dan interaksi obat.
+  <footer class="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 leading-relaxed space-y-2">
+    <p><b>⚠️ Disclaimer:</b> KIDOSE adalah alat bantu klinis. Selalu verifikasi dosis dengan formularium resmi (IDAI, BNF for Children, WHO) sebelum pemberian obat. Pertimbangkan kondisi klinis individu, fungsi organ, dan interaksi obat.</p>
+    <p class="pt-2 border-t border-amber-200"><b>📚 Tentang sitasi sumber:</b> Badge sumber pada tiap obat bersifat <b>indikatif (level-sumber, bukan level-halaman)</b> dan menunjukkan referensi yang paling mungkin menjadi acuan utama. <b>Edisi, tahun, dan nomor halaman WAJIB diverifikasi</b> dengan formularium terkini sebelum penggunaan klinis. Arahkan kursor (hover) ke badge untuk detail.</p>
+    <p><b>Singkatan:</b> BNF-C = BNF for Children · IDAI = Ikatan Dokter Anak Indonesia · WHO = WHO Pocket Book of Hospital Care for Children · APLS = Advanced Paediatric Life Support · GINA = Global Initiative for Asthma · AHA/PALS = Pediatric Advanced Life Support · Kemenkes = Kementerian Kesehatan RI.</p>
   </footer>
 </main>
 
@@ -254,6 +273,7 @@ const state = {
   ageMonths: null     // total bulan = ageYears*12 + ageMonthsInput
 };
 let searchQuery = '';
+let lastFirstMatchId = null;  // first matching drug from latest search (for deferred scroll)
 
 // ──────────────────────────────────────────
 // HELPERS
@@ -1045,6 +1065,89 @@ const DC = {
 };
 
 // ──────────────────────────────────────────
+// DRUG SOURCES (citation per drug)
+// Format: id: { s: 'badge teks ringkas', d: 'detail tooltip' }
+// ⚠️ Sumber bersifat indikatif (level-sumber, bukan level-halaman).
+//    Avi WAJIB verifikasi edisi/tahun/halaman dengan formularium terkini.
+// ──────────────────────────────────────────
+const VERIFY = ' — ⚠️ verifikasi edisi & halaman dengan formularium terkini';
+const SOURCES = {
+  // A. Antipiretik & Analgesik
+  paracetamol:   { s:'BNF-C / IDAI',  d:'BNF for Children & Formularium IDAI'+VERIFY },
+  ibuprofen:     { s:'BNF-C',         d:'BNF for Children'+VERIFY },
+  ketorolac:     { s:'BNF-C',         d:'BNF for Children — NSAID parenteral'+VERIFY },
+  tramadol:      { s:'BNF-C',         d:'BNF for Children — opioid analgesik'+VERIFY },
+  morphine:      { s:'BNF-C / APLS',  d:'BNF for Children & APLS — opioid kuat'+VERIFY },
+  // B. Antikonvulsan & Sedatif
+  diazepam:      { s:'IDAI / WHO',    d:'Konsensus Penanganan Kejang IDAI & WHO Pocket Book'+VERIFY },
+  fenitoin:      { s:'IDAI / BNF-C',  d:'Konsensus Status Epileptikus IDAI & BNF for Children'+VERIFY },
+  midazolam:     { s:'IDAI / APLS',   d:'Konsensus Kejang IDAI & APLS'+VERIFY },
+  phenobarbital: { s:'WHO / BNF-C',   d:'WHO Pocket Book & BNF for Children — neonatus'+VERIFY },
+  levetiracetam: { s:'BNF-C',         d:'BNF for Children — antiepilepsi gen baru'+VERIFY },
+  // C. Antibiotik
+  ampiGenta:     { s:'WHO / IDAI',    d:'WHO Pocket Book of Hospital Care — sepsis neonatus'+VERIFY },
+  ceftriCefota:  { s:'WHO / IDAI',    d:'WHO Pocket Book & Pedoman Sepsis IDAI'+VERIFY },
+  amoxClav:      { s:'BNF-C / IDAI',  d:'BNF for Children & Formularium IDAI'+VERIFY },
+  cefixime:      { s:'BNF-C',         d:'BNF for Children — sefalosporin oral'+VERIFY },
+  azithromycin:  { s:'BNF-C',         d:'BNF for Children — makrolid'+VERIFY },
+  cotrimoxazole: { s:'WHO / BNF-C',   d:'WHO Pocket Book & BNF for Children'+VERIFY },
+  metronidazole: { s:'BNF-C / WHO',   d:'BNF for Children & WHO'+VERIFY },
+  meropenem:     { s:'BNF-C',         d:'BNF for Children — carbapenem'+VERIFY },
+  vancomycin:    { s:'BNF-C',         d:'BNF for Children — TDM diperlukan'+VERIFY },
+  clindamycin:   { s:'BNF-C',         d:'BNF for Children — lincosamide'+VERIFY },
+  // D. Cairan
+  rumatan:       { s:'Holliday-Segar',d:'Holliday & Segar (1957) & Pedoman Cairan IDAI'+VERIFY },
+  resusitasi:    { s:'WHO / APLS',    d:'WHO Pocket Book & APLS — syok'+VERIFY },
+  diareDehidrasi:{ s:'WHO / IDAI',    d:'WHO/UNICEF Diarrhoea Treatment & Pedoman Diare IDAI'+VERIFY },
+  // E. Respiratori
+  nebulisasi:    { s:'IDAI / GINA',   d:'Pedoman Asma Anak IDAI & GINA'+VERIFY },
+  ambroxol:      { s:'BNF-C',         d:'BNF for Children — mukolitik'+VERIFY },
+  montelukast:   { s:'GINA / BNF-C',  d:'GINA & BNF for Children — berbasis usia'+VERIFY },
+  // F. Kortikosteroid
+  dexamethasone: { s:'BNF-C / IDAI',  d:'BNF for Children & pedoman croup/asma IDAI'+VERIFY },
+  methylpred:    { s:'GINA / IDAI',   d:'GINA & Pedoman Asma IDAI'+VERIFY },
+  // G. Antiemetik & Antihistamin
+  ondansetron:   { s:'BNF-C',         d:'BNF for Children — waspada QT'+VERIFY },
+  domperidone:   { s:'BNF-C',         d:'BNF for Children — waspada QT'+VERIFY },
+  cetirizine:    { s:'IDAI / CDC',    d:'Dosis berbasis usia — IDAI & CDC'+VERIFY },
+  ctm:           { s:'BNF-C',         d:'BNF for Children — antihistamin gen-1'+VERIFY },
+  // H. Gastroprotektor
+  ranitidine:    { s:'BNF-C',         d:'BNF for Children — perhatikan penarikan NDMA'+VERIFY },
+  omeprazole:    { s:'BNF-C',         d:'BNF for Children — PPI'+VERIFY },
+  sucralfate:    { s:'BNF-C',         d:'BNF for Children — sitoprotektif'+VERIFY },
+  // I. Emergensi
+  epinephrine:   { s:'APLS / WHO',    d:'APLS, ERC/AHA & WHO — anafilaksis/RJP'+VERIFY },
+  atropine:      { s:'APLS',          d:'APLS — bradikardia/pre-anestesi'+VERIFY },
+  ketamine:      { s:'APLS / BNF-C',  d:'APLS & BNF for Children — sedasi prosedural'+VERIFY },
+  dopamine:      { s:'APLS',          d:'APLS — Rule of 6, syok'+VERIFY },
+  dobutamine:    { s:'APLS',          d:'APLS — inotropik'+VERIFY },
+  adenosine:     { s:'APLS / AHA',    d:'APLS & AHA PALS — SVT'+VERIFY },
+  sodiumBicarbonat:{ s:'APLS',        d:'APLS — asidosis metabolik berat'+VERIFY },
+  calciumGluconat:{ s:'APLS / BNF-C', d:'APLS & BNF for Children'+VERIFY },
+  dextrose:      { s:'WHO / APLS',    d:'WHO Pocket Book & APLS — hipoglikemia'+VERIFY },
+  naloxone:      { s:'APLS / BNF-C',  d:'APLS & BNF for Children — antidot opioid'+VERIFY },
+  magnesiumSulfate:{ s:'GINA / APLS', d:'GINA & APLS — asma berat'+VERIFY },
+  // J. Antijamur, Antiparasit, Antivirus
+  fluconazole:   { s:'BNF-C',         d:'BNF for Children — antijamur'+VERIFY },
+  nystatin:      { s:'BNF-C / WHO',   d:'BNF for Children & WHO — kandidiasis oral'+VERIFY },
+  acyclovir:     { s:'BNF-C',         d:'BNF for Children — antivirus'+VERIFY },
+  albendazole:   { s:'WHO',           d:'WHO Deworming — dosis berbasis usia'+VERIFY },
+  mebendazole:   { s:'WHO',           d:'WHO Deworming — dosis tetap'+VERIFY },
+  pyrantelPamoate:{ s:'WHO / BNF-C',  d:'WHO & BNF for Children — antihelmintik'+VERIFY },
+  // K. Kardiovaskular & Diuretik
+  furosemide:    { s:'BNF-C',         d:'BNF for Children — loop diuretik'+VERIFY },
+  spironolactone:{ s:'BNF-C',         d:'BNF for Children — hemat kalium'+VERIFY },
+  captopril:     { s:'BNF-C',         d:'BNF for Children — ACE inhibitor'+VERIFY },
+  propranolol:   { s:'BNF-C',         d:'BNF for Children — beta-blocker'+VERIFY },
+  digoxin:       { s:'BNF-C',         d:'BNF for Children — TDD berbasis usia, indeks terapi sempit'+VERIFY },
+  // L. Suplemen & Nutrisi
+  vitaminA:      { s:'WHO / Kemenkes',d:'WHO & Program Vitamin A Nasional Kemenkes RI'+VERIFY },
+  ironSulfate:   { s:'WHO / IDAI',    d:'WHO & Pedoman Anemia Defisiensi Besi IDAI'+VERIFY },
+  vitaminD:      { s:'IDAI / Global', d:'Global Consensus Rickets & rekomendasi IDAI'+VERIFY },
+  folicAcid:     { s:'BNF-C',         d:'BNF for Children — defisiensi folat'+VERIFY }
+};
+
+// ──────────────────────────────────────────
 // CATEGORIES DATA
 // ──────────────────────────────────────────
 const categories = [
@@ -1192,12 +1295,16 @@ function renderCategories() {
       </button>
       <div id="cat-${cat.id}" class="accordion-content">
         <div class="px-4 pb-4 pt-1 space-y-3 border-t border-slate-100">
-          ${cat.drugs.map(drug => `
+          ${cat.drugs.map(drug => {
+            const src = SOURCES[drug.id];
+            const badge = src ? `<span class="src-badge" title="Sumber: ${src.d}">📚 ${src.s}</span>` : '';
+            return `
             <div id="card-${drug.id}" class="drug-card bg-slate-50 rounded-xl border border-slate-200 overflow-hidden">
               <div class="px-4 py-3 flex items-start gap-3">
                 <div class="flex-1 min-w-0">
                   <div class="font-semibold text-slate-800 leading-snug">${drug.name}</div>
                   <div class="text-xs text-slate-500 mt-0.5">${drug.sub}</div>
+                  ${badge ? `<div class="mt-1.5">${badge}</div>` : ''}
                 </div>
                 ${drug.hasSeverity ? `
                   <select id="sev-${drug.id}" onchange="recalculate()" class="shrink-0 text-xs border border-slate-300 rounded-md px-2 py-1.5 bg-white mt-0.5">
@@ -1209,8 +1316,8 @@ function renderCategories() {
               <div id="result-${drug.id}" class="px-4 pb-4 text-sm text-slate-400 italic">
                 Menunggu input BB...
               </div>
-            </div>
-          `).join('')}
+            </div>`;
+          }).join('')}
         </div>
       </div>
     </div>
@@ -1235,7 +1342,7 @@ function setAccordion(id, open) {
 // ──────────────────────────────────────────
 // SEARCH
 // ──────────────────────────────────────────
-function doSearch(query) {
+function doSearch(query, scroll = false) {
   searchQuery = query.trim().toLowerCase();
   const banner    = document.getElementById('searchBanner');
   const bannerTxt = document.getElementById('searchBannerText');
@@ -1258,6 +1365,7 @@ function doSearch(query) {
 
   clearBtn.classList.remove('hidden');
   let totalMatches = 0;
+  let firstMatchId = null;
 
   categories.forEach(cat => {
     let catHasMatch = false;
@@ -1270,6 +1378,7 @@ function doSearch(query) {
         card.classList.remove('search-no-match');
         catHasMatch = true;
         totalMatches++;
+        if (!firstMatchId) firstMatchId = drug.id;  // remember first hit
       } else {
         card.classList.remove('search-match');
         card.classList.add('search-no-match');
@@ -1298,6 +1407,29 @@ function doSearch(query) {
     banner.classList.remove('bg-amber-50','border-amber-200','text-amber-800');
     banner.classList.add('bg-emerald-50','border-emerald-200','text-emerald-800');
   }
+
+  // Scroll only when explicitly requested (Enter, button, or idle timeout) —
+  // never on every keystroke. Store match for deferred scroll.
+  lastFirstMatchId = firstMatchId;
+  if (scroll && firstMatchId) {
+    scrollToMatch(firstMatchId);
+  }
+}
+
+// Scroll viewport to a matching drug card. Delay lets accordion transition start.
+function scrollToMatch(id) {
+  const target = document.getElementById('card-'+id);
+  if (target) {
+    setTimeout(() => {
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 350);
+  }
+}
+
+// Triggered by the "Cari" button — run search and scroll to first match now.
+function triggerSearchScroll() {
+  const val = document.getElementById('searchBar').value;
+  doSearch(val, true);
 }
 
 function clearSearch() {
@@ -1417,11 +1549,32 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById(id).addEventListener('input', recalculate);
   });
 
-  // Search listener (debounce 200ms)
-  let searchTimer;
-  document.getElementById('searchBar').addEventListener('input', e => {
-    clearTimeout(searchTimer);
-    searchTimer = setTimeout(() => doSearch(e.target.value), 200);
+  // Search behavior:
+  //  • Filter/highlight runs fast (200ms) WITHOUT moving the view.
+  //  • View scrolls to first match only after user stops typing (~1.2s idle),
+  //    or instantly on Enter / search button.
+  const searchInput = document.getElementById('searchBar');
+  let filterTimer, idleScrollTimer;
+
+  searchInput.addEventListener('input', e => {
+    const val = e.target.value;
+    clearTimeout(filterTimer);
+    clearTimeout(idleScrollTimer);
+    // Fast filter, no scroll
+    filterTimer = setTimeout(() => doSearch(val, false), 200);
+    // Deferred scroll after typing pauses
+    idleScrollTimer = setTimeout(() => {
+      if (lastFirstMatchId) scrollToMatch(lastFirstMatchId);
+    }, 1200);
+  });
+
+  // Enter key → scroll immediately
+  searchInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      clearTimeout(idleScrollTimer);
+      doSearch(searchInput.value, true);
+    }
   });
 
   // Auto-open first category
